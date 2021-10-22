@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+
+<head>
+    <meta charset="hz-hant-TW">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>找尋色塊</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background-color: blanchedalmond;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 50px;
+            align-items: center;
+        }
+
+        .score {
+            font-size: 40px;
+            font-weight: bold;
+        }
+
+        .time {
+            font-size: 26px;
+            color: red;
+        }
+
+        .row {
+            width: 520px;
+            /* 有 padding 10px*/
+            height: 520px;
+            /* 有 padding 10px*/
+            background-color: #ddd;
+            border-radius: 10px;
+            padding: 10px;
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .col {
+            /* width: 250px; */
+            /* height: 250px; */
+            border: 5px solid #ddd;
+            border-radius: 10px;
+            /* background-color: cadetblue; 
+            只是方便CSS製作，下方JS的HTML加上style="background-color:就可拿掉了*/
+        }
+
+        /* .transparent {
+            opacity: 0.5;
+        } */
+
+        .btn {
+            width: 120px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            background-color: rgb(153, 153, 153);
+            border: 5px solid rgb(91, 34, 167);
+            border-radius: 10px;
+            cursor: pointer
+        }
+
+        .btn:hover {
+            background-color: rgb(31, 31, 31);
+            transition-duration: 0.1s;
+            color: white;
+        }
+
+        .btn:active {
+            background-color: rgb(255, 57, 57);
+            color: black;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- 先給個 0 才會是數值 -->
+        <div class="score">成績 : <span id="score">0</span> 分</div>
+        <div class="time">剩餘時間 : <span id="time"></span> (s)</div>
+        <div class="row">點擊下方開始鍵後，遊戲將立即開始~~點擊不同顏色之方塊來獲取高分！！！正確 + 10 分，答錯題目將會重製。
+            <!-- 
+            <div class="col"></div>
+            <div class="col"></div>
+            <div class="col"></div>
+            <div class="col transparent"></div>
+            -->
+        </div>
+        <!-- 將按鈕與JS所建立的函數綁定再一起 onclick="makecol"> 並給個起始值-->
+        <!-- 因為加了一個倒數計時指令，因此將makecol 改為 startGame ,當startGame執行時才會執行makecol-->
+        <div class="btn" onclick="startGame(2)">開始</div>
+    </div>
+
+    <script>
+        //JS多難寫取決於HTML的呈現方式
+        //取到 HTML
+        var score = document.querySelector('#score')
+        var row = document.querySelector('.row')
+        var time = document.querySelector('#time')
+        //給個倒數計時初始值
+        var timeMax = 60
+        //為了得到 setInterval(timerunning, 1000) 內的ID，給個全域變數
+        var timer
+        //將原本在function makecol()裡的var ans 提出，變為全域變數
+        var ans
+        //寫個函數執行到數，並呼叫下方函數makecol()，因為倒數計時的指令，這就是所謂的"耦合性"，耦合性越低越好！
+        //若寫在makecol裡，那時間每點擊就會跟著不斷重製(除非想做成不斷重新計時的遊戲)。
+        function startGame(index) {
+            // 或是這邊也加上clearInterval(timer)，讓他不要一直壘加
+            clearInterval(timer)
+            //setInterval函數裡面的指令必須要是字串，後面加毫秒:setInterval("console.log('一秒過去了')", 1000)，但通常裡面會給很多指令因此不太會這樣寫，寫法如下
+            //ES6之前的常見寫法，匿名函式:setInterval(function(){console.log('一秒過去了')}, 1000)
+            //箭頭函式:setInterval(()=>{console.log('一秒過去了')}, 1000)
+            //直接寫個函式方式:setInterval(函式, 1000, '函數裡的參數值')
+            //setInterval(timerunning, 1000) 
+            //setInterval會返回一個ID參數，因此加上' = 變數 '可將這個參數存下來，則這變數會變ID，如下方的 timer
+            timer = setInterval(timerunning, 1000)
+            time.innerHTML = timeMax
+            //分數記得也要重製
+            score.innerHTML = 0
+            //按開始後，讓開始鍵消失，不讓他可以一直按，造成倒數時間累加
+            // btn.style.display = 'none';
+            //或是在timer = setInterval(timerunning, 1000)的上方加上clearInterval(timer)，讓開始時，時間停止重製
+            
+            //當全部結束後，再去製造方塊，才不會在第一關時，有些東西無法初始化，如透明度
+            makecol(index)
+        }
+        //寫個倒數計時函數
+        function timerunning(index) {
+            time.innerHTML = parseInt(time.innerHTML) - 1
+            //如果時間等於0代表時時間到了遊戲結束，給個停止的指令，並結束遊戲
+            if (time.innerHTML == 0) {
+                //clearInterval能停止ID的innerHTML
+                //ID取得方式:如上方 timer = setInterval(timerunning, 1000)
+                clearInterval(timer)
+                //並且消除所有方塊不給玩
+                row.innerHTML = '點擊下方開始鍵後，遊戲將立即開始~~點擊不同顏色之方塊來獲取高分！！！正確 + 10 分，答錯題目將會重製。'
+                //setTimeout()是一個異步函數，意味著定時器函數不會暫停函數堆棧中其他函數的執行。也就是在背景執行時間。延遲10毫秒才執行。
+                //setInterval函數則是每一個都會去執行
+                setTimeout(() => { 
+                    //可以直接寫在row.innerHTML，也可以給個 alert 彈跳視窗
+                    alert('遊戲結束你共獲得' + score.innerHTML + '分')
+                 }, 10);
+                
+                //結束後，讓開始鍵出現，可重複遊玩
+                // btn.style.display = 'flex'
+            }
+        }
+
+        //首先先寫一個方塊會變出幾個 ?
+        function makecol(index) {
+            row.innerHTML = '' //每次下方迴圈執行完畢時要清空，不然會越壘加越多！可順便清空原本的介紹內容
+            var cols = index * index
+            // 亂數產生方式 : Math.floor(Math.random()*你需要的範圍的數字數目) + 你的起始數字
+            // Math.random()*10，小數點會向後移一位，所以如果是0~1的小數，就是 0~9.999
+            // Math.floor 的功用就是用來取整數的(無條件捨去)，因此 0~9.999 就會變成 0~9
+            // 可以考慮去除 var 讓他變全域變數，可以選擇的寫法就更多變
+            ans = Math.floor(Math.random() * cols)
+            //定義隨機顏色，原本是0~255的顏色，也就是 * 256 起始值為0，不要太深或是太淡，可取中間的顏色就好。
+            var R = Math.floor(Math.random() * 128) + 64 // 64 ~ 191 的顏色
+            var G = Math.floor(Math.random() * 128) + 64
+            var B = Math.floor(Math.random() * 128) + 64
+            var WH = 500 / index //改變一下方塊大小；可用 Math.floor 取整數
+            // content.style.width = `calc(${index} * 方塊邊長)` ，這邊是加大父層大小的方式
+            // content.style.height = `calc(${index} * 方塊邊長)`
+            console.log(ans)
+            //透明度變難~~寫個判斷式給他變難，因為裡面是變數要寫在上面
+            if (score.innerHTML <= 30) {
+                var OPA = 0.4
+            } else if (score.innerHTML <= 70) {
+                var OPA = 0.5
+            } else if (score.innerHTML <= 120) {
+                var OPA = 0.7
+            } else {
+                var OPA = 0.9
+            }
+            // 利用迴圈壘加 col
+            for (let i = 0; i < cols; i++) {
+                //給個答案判斷，讓他的答案顏色能夠變淺
+                if (i == ans) {
+                    // 並將正確的方塊寫上 onclick = "check"，寫出HTML時才會綁到下方check之函數
+                    // R G B 與寬高可以使用加的方式給值，或是可以使用樣板字串如下，樣板字串${}需要再" ` "重音符內使用
+                    // 增加難度時大小會不合，因此順便改變一下方塊大小如下，並在上方計算變數
+                    // 或是 makecol 時，就設定改變父層大小(row.style.width=`calc(${index}*方塊寬px)`)
+                    // 給個案錯一樣會自動重製 oclick="check(${i})" 
+                    row.innerHTML += `
+                    <div 
+                    class="col transparent" 
+                    onclick="check(${i})" 
+                    style="
+                    width:` + WH + `px;
+                    hight:` + WH + `px;
+                    background-color:rgb(` + R + `,` + G + `,` + B + `);
+                    opacity: ` + OPA + `;
+                    "
+                    >
+                    </div>`
+                } else {
+                    // 樣板字串看起來就簡單多了，而且不會寫錯一個就全爆掉
+                    // 給個案錯或自動重製 oclick="check(${i})" 
+                    row.innerHTML += `
+                    <div 
+                    class="col" 
+                    style="width:${WH}px;hight:${WH}px;background-color:rgb(${R},${G},${B})"
+                    onclick="check(${i})"
+                    >
+                    </div>`
+                }
+            }
+
+        }
+        //再來製作一個函數，當HTML onclick="check" 時，分數會壘加，並執行 makecol()
+        //給個按中的參數guess，若等於答案，才加分
+        function check(guess) {
+
+            //因為ans只有在上方函數才有定義 var ans = Math.floor(Math.random() * cols)
+            //所以這裡的函數會找不到，要將上方函數的 var ans 提出來，如上方所示
+            //var ans = Math.floor(Math.random() * cols) 改為 ans = Math.floor(Math.random() * cols)
+            if (guess == ans) {
+                // parseInt 為累加函數 +10分
+                score.innerHTML = parseInt(score.innerHTML) + 10
+            }
+
+
+            // 答對時能增加方塊難度，因此給個判斷式;增加方塊，大小會不合爆開，因此看是要改小方塊，或是父層加大都可
+            if (score.innerHTML <= 20) {
+                makecol(2)
+            } else if (score.innerHTML <= 40) {
+                makecol(3)
+            } else if (score.innerHTML <= 60) {
+                makecol(5)
+            } else if (score.innerHTML <= 80) {
+                makecol(7)
+            } else if (score.innerHTML <= 100) {
+                makecol(10)
+            } else if (score.innerHTML <= 150) {
+                makecol(15)
+            } else if (score.innerHTML <= 200) {
+                makecol(20)
+            } else {
+                makecol(30)
+            }
+        }
+    </script>
+
+
+</body>
+
+</html>
